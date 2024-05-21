@@ -1,0 +1,19 @@
+{
+    "name": "8-web-design/central-nic-reseller-api",
+    "description": "Library to execute the API Commands of CentralNic Reseller",
+    "type": "library",
+    "autoload": {
+        "psr-4": {
+            "EightWebDesign\\CentralNicResellerApi\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Sergio Santamaria",
+            "email": "development@8webdesign.com.au"
+        }
+    ],
+    "require": {
+        "guzzlehttp/guzzle": "^7.8"
+    }
+}
