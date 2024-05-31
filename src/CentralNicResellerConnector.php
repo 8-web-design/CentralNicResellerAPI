@@ -6,6 +6,7 @@ use Exception;
 use GuzzleHttp\Client;
 use SimpleXMLElement;
 use Carbon\Carbon;
+use EightWebDesign\CentralNicResellerApi\CentralNicResellerResponseParser as Parser;
 
 class CentralNicResellerConnector
 {
@@ -30,41 +31,13 @@ class CentralNicResellerConnector
         $response = $conn_client->post($conn_url, ['body' => $conn_request_body]);
         $response_body = (string) $response->getBody();
         $xml = simplexml_load_string($response_body);
-        $code = (int) $this->get_response_node($xml, 'CODE', '/methodResponse/params/param/value/struct/member', '/member/value/int');
+        $parsed_response = Parser::parse($xml);
+        $code = $parsed_response['CODE'];
         if (isset($code) and !in_array($code, [200, 210, 211, 212, 213, 214, 215, 218, 219, 220])) {
-            $e = (string) $this->get_response_node($xml, 'DESCRIPTION', '/methodResponse/params/param/value/struct/member', '/member/value/string');
+            $e = $parsed_response['DESCRIPTION'];
             throw new Exception($e);
-        } else {
-            return $xml;
         }
-    }
-
-    private function get_response_node(SimpleXMLElement $xml, $name, $qpath, $rpath)
-    {
-        $xqpath = $xml->xpath($qpath);
-        if (empty($xqpath)) :
-            return null;
-        endif;
-        $xval = null;
-        foreach ($xqpath as $xqnode) :
-            if ($xqnode->name == $name) :
-                $x = new SimpleXMLElement($xqnode->asXML());
-                $x = $x->xpath($rpath);
-                if (empty($x)) :
-                    return null;
-                endif;
-                if (count($x) > 1) :
-                    $arr = array();
-                    foreach ($x as $node) :
-                        array_push($arr, $node);
-                    endforeach;
-                    $xval = $arr;
-                else :
-                    $xval = $x[0];
-                endif;
-            endif;
-        endforeach;
-        return $xval;
+        return $parsed_response['PROPERTY'];
     }
 
     private function get_request_body(array $request)
@@ -106,10 +79,21 @@ class CentralNicResellerConnector
             'DOMAIN' => ['string', $domain]
         ];
         $response = $this->send_request($request);
-        $date = (string) $this->get_response_node($response, 'RENEWALDATE', '/methodResponse/params/param/value/struct/member/value/struct/member', '/member/value/array/data/value/string');
+        $date = $response['RENEWALDATE'];
         if (!empty($date)) {
             $date = Carbon::createFromFormat('Y-m-d H:i:s.z', $date, 'UTC');
         }
         return !empty($date) ? $date : null;
+    }
+
+    public function status_domain($domain)
+    {
+        $domain = idn_to_ascii($domain);
+
+        $request = [
+            'COMMAND' => ['string', 'StatusDomain'],
+            'DOMAIN' => ['string', $domain]
+        ];
+        return $this->send_request($request);
     }
 }
